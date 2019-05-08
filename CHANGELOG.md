@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/innovationnorway/terraform-azurerm-key-vault/compare/v1.1.0...v1.1.1) (2019-05-08)
+
+
+### Bug Fixes
+
+* make adjustments after v0.12.0-rc1 release ([0f22ec4](https://github.com/innovationnorway/terraform-azurerm-key-vault/commit/0f22ec4))
+
 # [1.1.0](https://github.com/innovationnorway/terraform-azurerm-key-vault/compare/v1.0.1...v1.1.0) (2019-04-24)
 
 
