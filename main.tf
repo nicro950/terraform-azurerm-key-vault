@@ -15,10 +15,10 @@ locals {
     for policy in local.access_policies : flatten([
       for id in policy.object_ids : {
         object_id               = id
-        certificate_permissions = tolist(policy.certificate_permissions)
-        key_permissions         = tolist(policy.key_permissions)
-        secret_permissions      = tolist(policy.secret_permissions)
-        storage_permissions     = tolist(policy.storage_permissions)
+        certificate_permissions = policy.certificate_permissions
+        key_permissions         = policy.key_permissions
+        secret_permissions      = policy.secret_permissions
+        storage_permissions     = policy.storage_permissions
       }
     ]) if policy.object_ids != []
   ])
@@ -27,10 +27,10 @@ locals {
     for policy in local.access_policies : flatten([
       for name in policy.group_names : {
         group_name              = lower(name)
-        certificate_permissions = tolist(policy.certificate_permissions)
-        key_permissions         = tolist(policy.key_permissions)
-        secret_permissions      = tolist(policy.secret_permissions)
-        storage_permissions     = tolist(policy.storage_permissions)
+        certificate_permissions = policy.certificate_permissions
+        key_permissions         = policy.key_permissions
+        secret_permissions      = policy.secret_permissions
+        storage_permissions     = policy.storage_permissions
       }
     ]) if policy.group_names != []
   ])
@@ -39,10 +39,10 @@ locals {
     for policy in local.access_policies : flatten([
       for name in policy.user_principal_names : {
         user_principal_name     = lower(name)
-        certificate_permissions = tolist(policy.certificate_permissions)
-        key_permissions         = tolist(policy.key_permissions)
-        secret_permissions      = tolist(policy.secret_permissions)
-        storage_permissions     = tolist(policy.storage_permissions)
+        certificate_permissions = policy.certificate_permissions
+        key_permissions         = policy.key_permissions
+        secret_permissions      = policy.secret_permissions
+        storage_permissions     = policy.storage_permissions
       }
     ]) if policy.user_principal_names != []
   ])
@@ -73,52 +73,52 @@ locals {
   group_access_policies = [
     for name, policies in local.grouped_group_access_policies : {
       object_id = local.group_object_ids[name]
-      certificate_permissions = toset(flatten([
+      certificate_permissions = flatten([
         for policy in policies : flatten([
           policy.certificate_permissions
         ]) if length(policy.certificate_permissions) > 0
-      ]))
-      key_permissions = toset(flatten([
+      ])
+      key_permissions = flatten([
         for policy in policies : flatten([
           policy.key_permissions
         ]) if length(policy.key_permissions) > 0
-      ]))
-      secret_permissions = toset(flatten([
+      ])
+      secret_permissions = flatten([
         for policy in policies : flatten([
           policy.secret_permissions
         ]) if length(policy.secret_permissions) > 0
-      ]))
-      storage_permissions = toset(flatten([
+      ])
+      storage_permissions = flatten([
         for policy in policies : flatten([
           policy.storage_permissions
         ]) if length(policy.storage_permissions) > 0
-      ]))
+      ])
     }
   ]
 
   user_access_policies = [
     for name, policies in local.grouped_user_access_policies : {
       object_id = local.user_object_ids[name]
-      certificate_permissions = toset(flatten([
+      certificate_permissions = flatten([
         for policy in policies : flatten([
           policy.certificate_permissions
         ]) if length(policy.certificate_permissions) > 0
-      ]))
-      key_permissions = toset(flatten([
+      ])
+      key_permissions = flatten([
         for policy in policies : flatten([
           policy.key_permissions
         ]) if length(policy.key_permissions) > 0
-      ]))
-      secret_permissions = toset(flatten([
+      ])
+      secret_permissions = flatten([
         for policy in policies : flatten([
           policy.secret_permissions
         ]) if length(policy.secret_permissions) > 0
-      ]))
-      storage_permissions = toset(flatten([
+      ])
+      storage_permissions = flatten([
         for policy in policies : flatten([
           policy.storage_permissions
         ]) if length(policy.storage_permissions) > 0
-      ]))
+      ])
     }
   ]
 }
@@ -157,9 +157,8 @@ resource "azurerm_key_vault" "main" {
 }
 
 resource "azurerm_key_vault_access_policy" "main" {
-  count               = length(local.flattened_access_policies)
-  vault_name          = azurerm_key_vault.main.name
-  resource_group_name = azurerm_key_vault.main.resource_group_name
+  count        = length(local.flattened_access_policies)
+  key_vault_id = azurerm_key_vault.main.id
 
   tenant_id = data.azurerm_client_config.main.tenant_id
   object_id = local.flattened_access_policies[count.index].object_id
@@ -171,9 +170,8 @@ resource "azurerm_key_vault_access_policy" "main" {
 }
 
 resource "azurerm_key_vault_access_policy" "group" {
-  count               = length(local.group_access_policies)
-  vault_name          = azurerm_key_vault.main.name
-  resource_group_name = azurerm_key_vault.main.resource_group_name
+  count        = length(local.group_access_policies)
+  key_vault_id = azurerm_key_vault.main.id
 
   tenant_id = data.azurerm_client_config.main.tenant_id
   object_id = local.group_access_policies[count.index].object_id
@@ -185,9 +183,8 @@ resource "azurerm_key_vault_access_policy" "group" {
 }
 
 resource "azurerm_key_vault_access_policy" "user" {
-  count               = length(local.user_access_policies)
-  vault_name          = azurerm_key_vault.main.name
-  resource_group_name = azurerm_key_vault.main.resource_group_name
+  count        = length(local.user_access_policies)
+  key_vault_id = azurerm_key_vault.main.id
 
   tenant_id = data.azurerm_client_config.main.tenant_id
   object_id = local.user_access_policies[count.index].object_id
