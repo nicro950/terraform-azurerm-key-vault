@@ -44,9 +44,9 @@ module "key_vault" {
 | `name` | `string` | The name of the Key Vault. |
 | `resource_group_name` | `string` | The name of an existing resource group for the Key Vault. |
 | `sku` | `string` | The name of the SKU used for the Key Vault. The options are: `standard`, `premium`. Default: `standard`. |
-| `enabled_for_deployment` | `bool` | Allow Virtual Machines to retrieve certificates stored as secrets from the key vault. Default: `false`. |
+| `enabled_for_deployment` | `bool` | Allow Virtual Machines to retrieve certificates stored as secrets from the Key Vault. Default: `false`. |
 | `enabled_for_disk_encryption` | `bool` | Allow Disk Encryption to retrieve secrets from the vault and unwrap keys. Default: `false`. |
-| `enabled_for_template_deployment` | `bool` | Allow Resource Manager to retrieve secrets from the key vault. Default: `false`. |
+| `enabled_for_template_deployment` | `bool` | Allow Resource Manager to retrieve secrets from the Key Vault. Default: `false`. |
 | `access_policies` | `list` | List of access policies for the Key Vault. |
 | `secrets` | `list` | List of secrets for Key Vault. |
 | `tags` | `map` | A mapping of tags to assign to the resource. |
