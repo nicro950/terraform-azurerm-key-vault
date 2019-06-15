@@ -39,7 +39,10 @@ variable "access_policies" {
 }
 
 variable "secrets" {
-  type        = any
+  type = list(object({
+    name  = string
+    value = string
+  }))
   description = "List of secrets for the Key Vault."
   default     = []
 }

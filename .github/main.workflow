@@ -4,7 +4,7 @@ workflow "Terraform" {
 }
 
 action "terraform-fmt" {
-  uses = "innovationnorway/github-action-terraform@v0.12.0-beta1"
+  uses = "innovationnorway/github-action-terraform@master"
   args = ["fmt", "-check", "-list", "-recursive"]
 }
 

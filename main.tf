@@ -1,6 +1,6 @@
 locals {
   access_policies = [
-    for policy in var.access_policies : merge({
+    for p in var.access_policies : merge({
       group_names             = []
       object_ids              = []
       user_principal_names    = []
@@ -8,117 +8,60 @@ locals {
       key_permissions         = []
       secret_permissions      = []
       storage_permissions     = []
-    }, policy)
+    }, p)
   ]
 
-  flattened_access_policies = flatten([
-    for policy in local.access_policies : flatten([
-      for id in policy.object_ids : {
-        object_id               = id
-        certificate_permissions = policy.certificate_permissions
-        key_permissions         = policy.key_permissions
-        secret_permissions      = policy.secret_permissions
-        storage_permissions     = policy.storage_permissions
-      }
-    ]) if policy.object_ids != []
-  ])
+  group_names          = distinct(flatten(local.access_policies[*].group_names))
+  user_principal_names = distinct(flatten(local.access_policies[*].user_principal_names))
 
-  flattened_group_access_policies = flatten([
-    for policy in local.access_policies : flatten([
-      for name in policy.group_names : {
-        group_name              = lower(name)
-        certificate_permissions = policy.certificate_permissions
-        key_permissions         = policy.key_permissions
-        secret_permissions      = policy.secret_permissions
-        storage_permissions     = policy.storage_permissions
-      }
-    ]) if policy.group_names != []
-  ])
+  group_object_ids = { for g in data.azuread_group.main : lower(g.name) => g.id }
+  user_object_ids  = { for u in data.azuread_user.main : lower(u.user_principal_name) => u.id }
 
-  flattened_user_access_policies = flatten([
-    for policy in local.access_policies : flatten([
-      for name in policy.user_principal_names : {
-        user_principal_name     = lower(name)
-        certificate_permissions = policy.certificate_permissions
-        key_permissions         = policy.key_permissions
-        secret_permissions      = policy.secret_permissions
-        storage_permissions     = policy.storage_permissions
-      }
-    ]) if policy.user_principal_names != []
-  ])
-
-  grouped_group_access_policies = {
-    for policy in local.flattened_group_access_policies :
-    policy.group_name => policy ...
-  }
-
-  grouped_user_access_policies = {
-    for policy in local.flattened_user_access_policies :
-    policy.user_principal_name => policy ...
-  }
-
-  group_names          = keys(local.grouped_group_access_policies)
-  user_principal_names = keys(local.grouped_user_access_policies)
-
-  group_object_ids = {
-    for group in data.azuread_group.main :
-    lower(group.name) => group.id
-  }
-
-  user_object_ids = {
-    for user in data.azuread_user.main :
-    lower(user.user_principal_name) => user.id
-  }
-
-  group_access_policies = [
-    for name, policies in local.grouped_group_access_policies : {
-      object_id = local.group_object_ids[name]
-      certificate_permissions = flatten([
-        for policy in policies : flatten([
-          policy.certificate_permissions
-        ]) if length(policy.certificate_permissions) > 0
+  flattened_access_policies = concat(
+    flatten([
+      for p in local.access_policies : flatten([
+        for i in p.object_ids : {
+          object_id               = i
+          certificate_permissions = p.certificate_permissions
+          key_permissions         = p.key_permissions
+          secret_permissions      = p.secret_permissions
+          storage_permissions     = p.storage_permissions
+        }
       ])
-      key_permissions = flatten([
-        for policy in policies : flatten([
-          policy.key_permissions
-        ]) if length(policy.key_permissions) > 0
+    ]),
+    flatten([
+      for p in local.access_policies : flatten([
+        for n in p.group_names : {
+          object_id               = local.group_object_ids[lower(n)]
+          certificate_permissions = p.certificate_permissions
+          key_permissions         = p.key_permissions
+          secret_permissions      = p.secret_permissions
+          storage_permissions     = p.storage_permissions
+        }
       ])
-      secret_permissions = flatten([
-        for policy in policies : flatten([
-          policy.secret_permissions
-        ]) if length(policy.secret_permissions) > 0
+    ]),
+    flatten([
+      for p in local.access_policies : flatten([
+        for n in p.user_principal_names : {
+          object_id               = local.user_object_ids[lower(n)]
+          certificate_permissions = p.certificate_permissions
+          key_permissions         = p.key_permissions
+          secret_permissions      = p.secret_permissions
+          storage_permissions     = p.storage_permissions
+        }
       ])
-      storage_permissions = flatten([
-        for policy in policies : flatten([
-          policy.storage_permissions
-        ]) if length(policy.storage_permissions) > 0
-      ])
-    }
-  ]
+    ])
+  )
 
-  user_access_policies = [
-    for name, policies in local.grouped_user_access_policies : {
-      object_id = local.user_object_ids[name]
-      certificate_permissions = flatten([
-        for policy in policies : flatten([
-          policy.certificate_permissions
-        ]) if length(policy.certificate_permissions) > 0
-      ])
-      key_permissions = flatten([
-        for policy in policies : flatten([
-          policy.key_permissions
-        ]) if length(policy.key_permissions) > 0
-      ])
-      secret_permissions = flatten([
-        for policy in policies : flatten([
-          policy.secret_permissions
-        ]) if length(policy.secret_permissions) > 0
-      ])
-      storage_permissions = flatten([
-        for policy in policies : flatten([
-          policy.storage_permissions
-        ]) if length(policy.storage_permissions) > 0
-      ])
+  grouped_access_policies = { for p in local.flattened_access_policies : p.object_id => p... }
+
+  combined_access_policies = [
+    for k, v in local.grouped_access_policies : {
+      object_id               = k
+      certificate_permissions = distinct(flatten(v[*].certificate_permissions))
+      key_permissions         = distinct(flatten(v[*].key_permissions))
+      secret_permissions      = distinct(flatten(v[*].secret_permissions))
+      storage_permissions     = distinct(flatten(v[*].storage_permissions))
     }
   ]
 }
@@ -157,42 +100,16 @@ resource "azurerm_key_vault" "main" {
 }
 
 resource "azurerm_key_vault_access_policy" "main" {
-  count        = length(local.flattened_access_policies)
+  count        = length(local.combined_access_policies)
   key_vault_id = azurerm_key_vault.main.id
 
   tenant_id = data.azurerm_client_config.main.tenant_id
-  object_id = local.flattened_access_policies[count.index].object_id
+  object_id = local.combined_access_policies[count.index].object_id
 
-  certificate_permissions = local.flattened_access_policies[count.index].certificate_permissions
-  key_permissions         = local.flattened_access_policies[count.index].key_permissions
-  secret_permissions      = local.flattened_access_policies[count.index].secret_permissions
-  storage_permissions     = local.flattened_access_policies[count.index].storage_permissions
-}
-
-resource "azurerm_key_vault_access_policy" "group" {
-  count        = length(local.group_access_policies)
-  key_vault_id = azurerm_key_vault.main.id
-
-  tenant_id = data.azurerm_client_config.main.tenant_id
-  object_id = local.group_access_policies[count.index].object_id
-
-  certificate_permissions = local.group_access_policies[count.index].certificate_permissions
-  key_permissions         = local.group_access_policies[count.index].key_permissions
-  secret_permissions      = local.group_access_policies[count.index].secret_permissions
-  storage_permissions     = local.group_access_policies[count.index].storage_permissions
-}
-
-resource "azurerm_key_vault_access_policy" "user" {
-  count        = length(local.user_access_policies)
-  key_vault_id = azurerm_key_vault.main.id
-
-  tenant_id = data.azurerm_client_config.main.tenant_id
-  object_id = local.user_access_policies[count.index].object_id
-
-  certificate_permissions = local.user_access_policies[count.index].certificate_permissions
-  key_permissions         = local.user_access_policies[count.index].key_permissions
-  secret_permissions      = local.user_access_policies[count.index].secret_permissions
-  storage_permissions     = local.user_access_policies[count.index].storage_permissions
+  certificate_permissions = local.combined_access_policies[count.index].certificate_permissions
+  key_permissions         = local.combined_access_policies[count.index].key_permissions
+  secret_permissions      = local.combined_access_policies[count.index].secret_permissions
+  storage_permissions     = local.combined_access_policies[count.index].storage_permissions
 }
 
 resource "azurerm_key_vault_secret" "main" {
@@ -200,9 +117,5 @@ resource "azurerm_key_vault_secret" "main" {
   name         = var.secrets[count.index].name
   value        = var.secrets[count.index].value
   key_vault_id = azurerm_key_vault.main.id
-  depends_on = [
-    "azurerm_key_vault_access_policy.main",
-    "azurerm_key_vault_access_policy.group",
-    "azurerm_key_vault_access_policy.user"
-  ]
+  depends_on   = [azurerm_key_vault_access_policy.main]
 }
