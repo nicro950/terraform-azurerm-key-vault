@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/innovationnorway/terraform-azurerm-key-vault/compare/v1.1.2...v1.2.0) (2019-07-03)
+
+
+### Features
+
+* self-assign permissions if logged in as service principal ([9039c59](https://github.com/innovationnorway/terraform-azurerm-key-vault/commit/9039c59))
+
 ## [1.1.2](https://github.com/innovationnorway/terraform-azurerm-key-vault/compare/v1.1.1...v1.1.2) (2019-06-15)
 
 ## [1.1.1](https://github.com/innovationnorway/terraform-azurerm-key-vault/compare/v1.1.0...v1.1.1) (2019-05-08)
