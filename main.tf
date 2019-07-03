@@ -64,6 +64,8 @@ locals {
       storage_permissions     = distinct(flatten(v[*].storage_permissions))
     }
   ]
+
+  service_principal_object_id = data.azurerm_client_config.main.service_principal_object_id
 }
 
 data "azuread_group" "main" {
@@ -118,4 +120,15 @@ resource "azurerm_key_vault_secret" "main" {
   value        = var.secrets[count.index].value
   key_vault_id = azurerm_key_vault.main.id
   depends_on   = [azurerm_key_vault_access_policy.main]
+}
+
+resource "azurerm_key_vault_access_policy" "self" {
+  count        = local.service_principal_object_id != "" ? 1 : 0
+  key_vault_id = azurerm_key_vault.main.id
+
+  tenant_id = data.azurerm_client_config.main.tenant_id
+  object_id = local.service_principal_object_id
+
+  key_permissions    = ["create", "delete", "get"]
+  secret_permissions = ["delete", "get", "set"]
 }
