@@ -4,7 +4,7 @@ output "id" {
 }
 
 output "uri" {
-  value       = azurerm_key_vault.main.id
+  value       = azurerm_key_vault.main.vault_uri
   description = "The URI of the Key Vault."
 }
 
